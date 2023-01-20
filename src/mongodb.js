@@ -61,6 +61,22 @@ const UserSchema = new mongoose.Schema({
     }
 })
 
-const Users = new mongoose.model("Users", UserSchema)
+const IncomeSchema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    directIncome: {
+        type: String,
+        required: true
+    },
+    levelIncome: {
+        type: String,
+        required: true
+    }
+})
 
-module.exports = { Users, db }
+const Users = new mongoose.model("Users", UserSchema)
+const IncomeModel = new mongoose.model("Income", IncomeSchema)
+
+module.exports = { Users, db, IncomeModel }

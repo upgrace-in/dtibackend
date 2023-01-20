@@ -1,6 +1,6 @@
 const express = require('express')
 const app = express()
-const { Users, db } = require('./mongodb')
+const { Users, db, IncomeModel } = require('./mongodb')
 const cors = require('cors')
 require('dotenv').config()
 app.use(express.json())
@@ -53,35 +53,88 @@ app.get('/plans', async (req, res) => {
 app.post("/register", async (req, res) => {
     try {
         const check = await Users.findOne({ userID: req.body.sponsorID })
-        await Users.insertMany({ ...req.body, uID: parseInt(check.uID) + 1 })
+        await Users.insertMany({ ...req.body, uID: parseFloat(check.uID) + 1 })
         res.json({ msg: true })
     } catch (e) {
         res.send({ msg: false, response: "Something went wrong !!!" })
     }
 })
 
-function updateIncome(req){
-    // Do it now
-    // var collection = db.collection('plans').findOne({planID: });
+async function updateIncome(userID, dict) {
+    const filter = { userID: userID };
+    const updateDoc = {
+        $set: dict
+    }
+    const options = { upsert: true }
+    await IncomeModel.findOneAndUpdate(filter, updateDoc, options)
+}
+
+async function directIncome(upline, directIncomePercent, amt) {
+    // directincome % -> calculate the % -> update to the upline
+    const oldIncome = await IncomeModel.findOne({ userID: upline });
+
+    // Calculating for the final directincome for the upline
+    let income = (parseFloat(amt) * parseFloat(directIncomePercent)) / 100
+
+    // If the upline already has some income add it to it
+    if (oldIncome !== null)
+        income = income + parseFloat(oldIncome.directIncome)
+
+    // Down work is just to update 
+    await updateIncome(upline, { directIncome: income })
+}
+
+async function levelIncome(upline, levels, amt) {
+    // directincome % -> calculate the % -> update to the upline
+    // const oldIncome = await IncomeModel.findOne({ userID: upline });
+    let LevelPercent = levels.split(',')
+    let currentUpline = upline
+    // Looping through the level percents
+    for (var i = 0; i < LevelPercent.length; i++) {
+        // Updating each uplines according to the levelpercents
+        let income = (parseFloat(amt) * parseFloat(LevelPercent[i])) / 100
+        if (currentUpline.sponsorID !== null)
+            await updateIncome(currentUpline.sponsorID, { levelIncome: income })
+        else
+            break
+        // Updating the currentupline in each loop
+        currentUpline = await Users.findOne({ userID: currentUpline.sponsorID })
+    }
+
+    // Calculating for the final directincome for the upline
+    // let income = (parseFloat(amt) * parseFloat(directIncomePercent)) / 100
+    // console.log(oldIncome, income);
+    // // If the upline already has some income add it to it
+    // if (oldIncome !== null)
+    //     income = income + parseFloat(oldIncome.levelIncome)
 }
 
 app.post("/addPlan", async (req, res) => {
     try {
         const check = await Users.findOne({ userID: req.session.user.userID })
-        const filter = { userID: req.session.user.userID };
-        const updateDoc = {
-            $set: {
-                plans: [...check.plans, {
-                    planID: req.body.planID,
-                    amount: req.body.amount
-                }]
-            }
-        }
-        await Users.updateOne(filter, updateDoc)
-        // Update direct & level income
-        updateIncome(req)
+        const plan = await db.collection('plans').findOne({ planID: req.body.planID });
+
+        await levelIncome(check, plan.levelIncome, req.body.amount)
+        // const filter = { userID: req.session.user.userID };
+        // const updateDoc = {
+        //     $set: {
+        //         plans: [...check.plans, {
+        //             planID: req.body.planID,
+        //             amount: req.body.amount
+        //         }]
+        //     }
+        // }
+        // if ((parseFloat(plan.minInvest) < parseFloat(req.body.amount)) && (parseFloat(req.body.amount) < parseFloat(plan.maxInvest)))
+        //     await Users.updateOne(filter, updateDoc)
+        // else
+        //     throw new Error;
+        // // Update direct & level income
+        // if (check.sponsorID !== null)
+        //     await directIncome(check.sponsorID, plan.directIncome, req.body.amount)
+        // await levelIncome(check.sponsorID, plan.levelIncome, req.body.amount)
         res.json({ msg: true })
     } catch (e) {
+        console.log(e);
         res.send({ msg: false, response: "Something went wrong !!!" })
     }
 })
