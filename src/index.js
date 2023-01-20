@@ -60,17 +60,26 @@ app.post("/register", async (req, res) => {
     }
 })
 
+function updateIncome(req){
+    // Do it now
+    // var collection = db.collection('plans').findOne({planID: });
+}
+
 app.post("/addPlan", async (req, res) => {
     try {
         const check = await Users.findOne({ userID: req.session.user.userID })
         const filter = { userID: req.session.user.userID };
         const updateDoc = {
             $set: {
-                plans: [...check.plans, req.body.planID]
-            },
-        };
-        // According to the plans now update their direct income & level income
+                plans: [...check.plans, {
+                    planID: req.body.planID,
+                    amount: req.body.amount
+                }]
+            }
+        }
         await Users.updateOne(filter, updateDoc)
+        // Update direct & level income
+        updateIncome(req)
         res.json({ msg: true })
     } catch (e) {
         res.send({ msg: false, response: "Something went wrong !!!" })

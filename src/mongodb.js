@@ -52,9 +52,13 @@ const UserSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    plans: [{
-        type: Number
-    }]
+    plans: {
+        type: [{
+            date: { type: Date, default: Date.now },
+            planID: { type: String },
+            amount: { type: String }
+        }]
+    }
 })
 
 const Users = new mongoose.model("Users", UserSchema)
