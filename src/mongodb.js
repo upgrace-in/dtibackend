@@ -2,13 +2,17 @@ const mongoose = require('mongoose')
 
 require('dotenv').config()
 
+let conn;
+
 mongoose.connect(process.env.MONGO_URL)
-    .then(() => {
-        console.log("Connected !!!");
-    })
-    .catch(() => {
-        console.log("Failed to connect !!!");
-    })
+
+const db = mongoose.connection;
+
+db.on('error', console.error.bind(console, 'connection error:'));
+
+db.once('open', () => {
+    console.log('connected');
+});
 
 const UserSchema = new mongoose.Schema({
     uID: {
@@ -47,9 +51,12 @@ const UserSchema = new mongoose.Schema({
     is_admin: {
         type: Boolean,
         default: false
-    }
+    },
+    plans: [{
+        type: Number
+    }]
 })
 
 const Users = new mongoose.model("Users", UserSchema)
 
-module.exports = { Users }
+module.exports = { Users, db }

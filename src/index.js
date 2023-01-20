@@ -1,6 +1,6 @@
 const express = require('express')
 const app = express()
-const { Users } = require('./mongodb')
+const { Users, db } = require('./mongodb')
 const cors = require('cors')
 require('dotenv').config()
 app.use(express.json())
@@ -40,10 +40,37 @@ app.get('/isAuth', async (req, res) => {
     }
 })
 
+app.get('/plans', async (req, res) => {
+    var collection = db.collection('plans');
+    collection.find().toArray(function (err, plans) {
+        if (!err)
+            res.send({ msg: true, response: plans })
+        else
+            res.send({ msg: false })
+    });
+})
+
 app.post("/register", async (req, res) => {
     try {
         const check = await Users.findOne({ userID: req.body.sponsorID })
         await Users.insertMany({ ...req.body, uID: parseInt(check.uID) + 1 })
+        res.json({ msg: true })
+    } catch (e) {
+        res.send({ msg: false, response: "Something went wrong !!!" })
+    }
+})
+
+app.post("/addPlan", async (req, res) => {
+    try {
+        const check = await Users.findOne({ userID: req.session.user.userID })
+        const filter = { userID: req.session.user.userID };
+        const updateDoc = {
+            $set: {
+                plans: [...check.plans, req.body.planID]
+            },
+        };
+        // According to the plans now update their direct income & level income
+        await Users.updateOne(filter, updateDoc)
         res.json({ msg: true })
     } catch (e) {
         res.send({ msg: false, response: "Something went wrong !!!" })
