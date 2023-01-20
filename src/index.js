@@ -44,9 +44,9 @@ app.post("/register", async (req, res) => {
     try {
         const check = await Users.findOne({ userID: req.body.sponsorID })
         await Users.insertMany({ ...req.body, uID: parseInt(check.uID) + 1 })
-        res.send({ msg: true })
+        res.json({ msg: true })
     } catch (e) {
-        res.send({ msg: false })
+        res.send({ msg: false, response: "Something went wrong !!!" })
     }
 })
 
@@ -63,7 +63,7 @@ app.post("/login", async (req, res) => {
     try {
         const check = await Users.findOne({ userID: req.body.userID })
         if (check.password == req.body.password) {
-            const userSession = { userID: check.userID }
+            const userSession = { userID: check.userID, is_admin: check.is_admin }
             req.session.user = userSession
             res.json({ msg: true, userSession })
         } else
@@ -79,6 +79,6 @@ app.get("/logout", async (req, res) => {
     })
 });
 
-app.listen(7070, () => {
+app.listen(9000, () => {
     console.log("Connected !!!");
 })
