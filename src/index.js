@@ -256,6 +256,15 @@ app.get("/checkID", async (req, res) => {
     });
 })
 
+app.get("/income", async (req, res) => {
+    await IncomeModel.findOne({ userID: req.query.id }).then(val => {
+        if (val !== null)
+            res.send({ msg: true, response: val })
+        else
+            res.send({ msg: false })
+    });
+})
+
 app.post("/login", async (req, res) => {
     try {
         const check = await Users.findOne({ userID: req.body.userID })
