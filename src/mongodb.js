@@ -67,12 +67,16 @@ const IncomeSchema = new mongoose.Schema({
         required: true
     },
     directIncome: {
-        type: String,
-        required: true
+        type: String
     },
     levelIncome: {
-        type: String,
-        required: true
+        type: String
+    },
+    dailyProfit: {
+        type: String
+    },
+    dailyLevelIncome: {
+        type: String
     }
 })
 

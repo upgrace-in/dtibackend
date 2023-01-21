@@ -77,32 +77,67 @@ async function directIncome(upline, directIncomePercent, amt) {
     let income = (parseFloat(amt) * parseFloat(directIncomePercent)) / 100
 
     // If the upline already has some income add it to it
-    if (oldIncome !== null)
+    if ((oldIncome !== null) && (oldIncome.directIncome !== undefined))
         income = income + parseFloat(oldIncome.directIncome)
 
     // Down work is just to update 
     await updateIncome(upline, { directIncome: income })
 }
 
-async function levelIncome(user, levels, amt) {
-    // Fetch the old income of the upline
-    const oldIncome = await IncomeModel.findOne({ userID: user.sponsorID });
+async function dailyProfit() {
+    // Loop through all the users
+    const users = await Users.find()
+    for (var i = 0; i < users.length; i++) {
 
-    let LevelPercent = levels.split(',')
-    let currentUpline = user
-    // Looping through the level percents
-    for (var i = 0; i < LevelPercent.length; i++) {
-        // Calculating income according to the levelpercents
-        let income = (parseFloat(amt) * parseFloat(LevelPercent[i])) / 100
+        let finalIncome = 0
+        let plans = users[i].plans
 
-        if (oldIncome !== null)
+        // Loop through all the plans a user has (put the amt invested in a variable)
+        for (var j = 0; j < plans.length; j++) {
+
+            // Fetch the plan details (dailyProfitPercent)
+            const plan = await db.collection('plans').findOne({ planID: parseInt(plans[j].planID) })
+            let dailyProfitPercent = parseFloat(plan.dailyProfit)
+
+            // Invested amt per plan
+            let investAmt = parseFloat(plans[j].amount)
+
+            // Fetch Calculate the income (Add the income to the finalIncome)
+            finalIncome = finalIncome + (parseFloat(investAmt) * parseFloat(dailyProfitPercent)) / 100
+        }
+        // Update to the DB
+        // Fetch the user's old dailylevelincome
+        const oldIncome = await IncomeModel.findOne({ userID: users[i].userID });
+        if ((oldIncome !== null) && (oldIncome.dailyProfit !== undefined))
             // Adding the old income to the new one
-            income = parseFloat(income) + parseFloat(oldIncome.levelIncome)
+            finalIncome = parseFloat(finalIncome) + parseFloat(oldIncome.dailyProfit)
+        await updateIncome(users[i].userID, { dailyProfit: finalIncome })
+    }
+}
+
+async function updateFinalIncome(planDict, user, finalIncome) {
+    // Invested amt per plan
+    let investAmt = parseFloat(planDict.amount)
+    let currentUpline = user
+
+    // Fetch the plan details (dailyLevelIncomePercents + LevelIncome)
+    const plan = await db.collection('plans').findOne({ planID: parseInt(planDict.planID) })
+    let LevelPercent = plan.levelIncome.split(',')
+    let DailylevelPercent = plan.dailyLevelIncome.split(',')
+
+    // Loop through the levelincome
+    for (var k = 0; k < LevelPercent.length; k++) {
 
         // Checking if the upline is null or not
         try {
-            if (currentUpline.sponsorID !== "null")
-                await updateIncome(currentUpline.sponsorID, { levelIncome: income })
+            if (currentUpline.sponsorID !== "null") {
+
+                // Calculate the income (acc to dailyLevelIncomePercents of levelincome of AMT)
+                let income = ((parseFloat(investAmt) * parseFloat(LevelPercent[k])) / 100) * parseFloat(DailylevelPercent[k]) / 100
+
+                finalIncome[currentUpline.sponsorID] = income
+
+            }
         } catch (e) {
             break
         }
@@ -110,11 +145,77 @@ async function levelIncome(user, levels, amt) {
         // Updating the currentupline in each loop
         currentUpline = await Users.findOne({ userID: currentUpline.sponsorID })
     }
+
+    return finalIncome
+}
+
+async function dailyLevelIncome() {
+    // Loop through all the users
+    const users = await Users.find()
+    for (var i = 0; i < users.length; i++) {
+
+        let finalIncome = {}
+        let plans = users[i].plans
+        let currentUpline = users[i]
+
+        // checking if the upline is not null
+        if (currentUpline.sponsorID !== "null") {
+            // Loop through all the plans a user has (put the amt invested in a variable)
+            for (var j = 0; j < plans.length; j++) {
+
+                finalIncome = await updateFinalIncome(plans[j], currentUpline, finalIncome)
+
+            }
+        }
+        // Update to the DB
+        Object.keys(finalIncome).forEach(async key => {
+            // Fetch the user's old dailylevelincome
+            const oldIncome = await IncomeModel.findOne({ userID: key });
+            if ((oldIncome !== null) && (oldIncome.dailyLevelIncome !== undefined))
+                // Adding the old income to the new one
+                finalIncome[key] = parseFloat(finalIncome[key]) + parseFloat(oldIncome.dailyLevelIncome)
+            await updateIncome(key, { dailyLevelIncome: finalIncome[key] })
+        })
+    }
+}
+
+async function levelIncome(user, levels, amt) {
+
+    let finalIncome = {}
+    let LevelPercent = levels.split(',')
+    let currentUpline = user
+
+    // Looping through the level percents
+    for (var i = 0; i < LevelPercent.length; i++) {
+        // Calculating income according to the levelpercents
+        let income = (parseFloat(amt) * parseFloat(LevelPercent[i])) / 100
+
+        // Checking if the upline is null or not
+        try {
+            if (currentUpline.sponsorID !== "null")
+                finalIncome[currentUpline.sponsorID] = income
+        } catch (e) {
+            break
+        }
+
+        // Updating the currentupline in each loop
+        currentUpline = await Users.findOne({ userID: currentUpline.sponsorID })
+    }
+
+    Object.keys(finalIncome).forEach(async key => {
+        // Fetch the user's old dailylevelincome
+        const oldIncome = await IncomeModel.findOne({ userID: key });
+        if ((oldIncome !== null) && (oldIncome.levelIncome !== undefined))
+            // Adding the old income to the new one
+            finalIncome[key] = parseFloat(finalIncome[key]) + parseFloat(oldIncome.levelIncome)
+        await updateIncome(key, { levelIncome: finalIncome[key] })
+    })
+
 }
 
 app.post("/addPlan", async (req, res) => {
     try {
-        
+
         // Fetching the user & plan details
         const check = await Users.findOne({ userID: req.session.user.userID })
         const plan = await db.collection('plans').findOne({ planID: req.body.planID });
@@ -135,7 +236,7 @@ app.post("/addPlan", async (req, res) => {
             throw new Error;
 
         // Update direct & level income
-        if (check.sponsorID !== null)
+        if (check.sponsorID !== "null")
             await directIncome(check.sponsorID, plan.directIncome, req.body.amount)
         await levelIncome(check, plan.levelIncome, req.body.amount)
         res.json({ msg: true })
@@ -174,6 +275,11 @@ app.get("/logout", async (req, res) => {
         res.redirect('/')
     })
 });
+
+// setTimeout(async () => {
+//     await dailyLevelIncome()
+//     await dailyProfit()
+// }, 3000)
 
 app.listen(9000, () => {
     console.log("Connected !!!");
