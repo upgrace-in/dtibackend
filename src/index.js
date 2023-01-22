@@ -290,6 +290,6 @@ app.get("/logout", async (req, res) => {
 //     await dailyProfit()
 // }, 3000)
 
-app.listen(9000, () => {
+app.listen(7070, () => {
     console.log("Connected !!!");
 })
