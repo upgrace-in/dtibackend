@@ -40,6 +40,10 @@ app.get('/isAuth', async (req, res) => {
     }
 })
 
+app.get('/', (req, res) => {
+    res.send("Hari Bol")
+});
+
 app.get('/plans', async (req, res) => {
     var collection = db.collection('plans');
     collection.find().toArray(function (err, plans) {
@@ -290,6 +294,6 @@ app.get("/logout", async (req, res) => {
 //     await dailyProfit()
 // }, 3000)
 
-app.listen(7070, () => {
+app.listen(9000, () => {
     console.log("Connected !!!");
 })

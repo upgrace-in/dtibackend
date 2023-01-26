@@ -30,13 +30,13 @@ pw
 8) 
 9) While signing up add the newuser to the sponsorID to in the TEAM PART
 10) My Team (Package) Total / one package
+11) Reports
 
-Reports
-
-
+coinpayment
+cryptocompare
 
 # Questions
 1) TRX or any other coin
-2) TOPUP Wallet or Wallet difference
-3) Withdrawal System (Contract based or directly)
-4) Trades (Release)
+2) TOPUP Wallet (Fund wallet) or Wallet (Withdrawal income) difference
+3) Withdrawal System (Directly paid using coinpayment send Tron)
+4) Trades (Release) (Package input) (Not needed)
