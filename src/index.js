@@ -56,13 +56,97 @@ app.get('/plans', async (req, res) => {
 
 app.post("/register", async (req, res) => {
     try {
-        const check = await Users.findOne({ userID: req.body.sponsorID })
-        await Users.insertMany({ ...req.body, uID: parseFloat(check.uID) + 1 })
-        res.json({ msg: true })
+        // The UserID should not exists
+        const userExists = await Users.findOne({ userID: req.body.userID })
+        if (userExists === null) {
+            // Registereing the user
+            await Users.insertMany(
+                {
+                    ...req.body,
+                    uID: parseFloat(req.body.uID) + 1,
+                }
+            )
+
+            // Update the user to the sponsor's collection
+            const check = await Users.findOne({ userID: req.body.sponsorID })
+            await Users.updateOne(
+                {
+                    userID: req.body.sponsorID
+                }, {
+                $set: {
+                    connections: [...check.connections, {
+                        userID: req.body.userID
+                    }]
+                }
+            })
+            res.json({ msg: true })
+        } else
+            res.send({ msg: false, response: "Something went wrong !!!" })
     } catch (e) {
+        console.log(e);
         res.send({ msg: false, response: "Something went wrong !!!" })
     }
 })
+
+async function fetchuserdetails(userID) {
+    return await Users.findOne({ userID: userID }).then(val => {
+        return val
+    })
+
+}
+
+app.get("/directUsers", async (req, res) => {
+    try {
+        // fetch the user's connections
+        await Users.findOne({ userID: 'member' }).then(async val => {
+            // create a empty arr
+            let directusers = []
+            // iterate through the connections and fetch their details put into the above dict
+            let cons = val.connections
+            for (let i = 0; i < cons.length; i++) {
+                const val = await fetchuserdetails(cons[i].userID)
+                directusers.push(val)
+            }
+            // return the dict
+            res.send({ msg: true, response: directusers })
+        })
+    } catch (e) {
+        console.log(e);
+        res.send({ msg: false })
+    }
+});
+
+async function recurseToNull(currentuser, teamDict, level) {
+    if (currentuser.connections === null) {
+        return null
+    } else {
+        try {
+            teamDict[level].push(currentuser)
+        } catch (e) {
+            teamDict[level] = []
+            teamDict[level].push(currentuser)
+        }
+        let cons = currentuser.connections
+        for (let i = 0; i < cons.length; i++) {
+            const val = await fetchuserdetails(cons[i].userID)
+            await recurseToNull(val, teamDict, level + 1)
+        }
+        return teamDict
+    }
+}
+
+app.get("/myTeam", async (req, res) => {
+    try {
+        await fetchuserdetails('member').then(async val => {
+            let teamDict = {}
+            teamDict = await recurseToNull(val, teamDict, 0)
+            res.send({ msg: true, response: teamDict })
+        })
+    } catch (e) {
+        console.log(e);
+        res.send({ msg: false })
+    }
+});
 
 async function updateIncome(userID, dict) {
     const filter = { userID: userID };
@@ -219,7 +303,6 @@ async function levelIncome(user, levels, amt) {
 
 app.post("/addPlan", async (req, res) => {
     try {
-
         // Fetching the user & plan details
         const check = await Users.findOne({ userID: req.session.user.userID })
         const plan = await db.collection('plans').findOne({ planID: req.body.planID });
@@ -254,9 +337,9 @@ app.post("/addPlan", async (req, res) => {
 app.get("/checkID", async (req, res) => {
     await Users.findOne({ userID: req.query.id }).then(val => {
         if (val !== null)
-            res.send({ msg: true })
+            res.send({ msg: true, response: val })
         else
-            res.send({ msg: false })
+            res.send({ msg: false, response: val })
     });
 })
 
@@ -279,6 +362,36 @@ app.post("/login", async (req, res) => {
         } else
             res.send({ msg: false, response: "Password doesn't matched !!!" })
     } catch (e) {
+        res.send({ msg: false, response: "Invalid User !!!" })
+    }
+})
+
+app.post("/transferFund", async (req, res) => {
+    try {
+        const check = await IncomeModel.findOne({ userID: req.body.userID });
+
+        let amt = req.body.amt
+        let fundType = req.body.fundType
+        let finaldic = {}
+        finaldic[fundType] = amt
+
+        if (check !== null)
+            if ((fundType === 'topupwallet') && (check.topupwallet !== undefined)) {
+                amt = parseFloat(check.topupwallet) + parseFloat(amt)
+                finaldic = { topupwallet: amt }
+            } else if (check.wallet !== undefined) {
+                amt = parseFloat(check.wallet) + parseFloat(amt)
+                finaldic = { wallet: amt }
+            }
+
+        await IncomeModel.updateOne(
+            { userID: req.body.userID },
+            finaldic,
+            { upsert: true });
+
+        res.json({ msg: true })
+    } catch (e) {
+        console.log(e);
         res.send({ msg: false, response: "Invalid User !!!" })
     }
 })

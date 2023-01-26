@@ -24,6 +24,10 @@ const UserSchema = new mongoose.Schema({
         minlength: 5,
         required: true
     },
+    doj: {
+        type: Date,
+        default: Date.now
+    },
     userID: {
         type: String,
         required: true
@@ -58,6 +62,11 @@ const UserSchema = new mongoose.Schema({
             planID: { type: String },
             amount: { type: String }
         }]
+    },
+    connections: {
+        type: [{
+            userID: { type: String }
+        }]
     }
 })
 
@@ -76,6 +85,12 @@ const IncomeSchema = new mongoose.Schema({
         type: String
     },
     dailyLevelIncome: {
+        type: String
+    },
+    wallet: {
+        type: String
+    },
+    topupwallet: {
         type: String
     }
 })

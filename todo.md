@@ -20,23 +20,16 @@ pw
 
 
 # TODO
-1) Fill Home Income Page
-2) 
-3) Add Fund - Admin
-4) Calculate TRX accoridng to USDT API
-5) 
-6) Validate while selecting one plan to check his FUND
-7) Incomes should be prepared on the report format
-8) 
-9) While signing up add the newuser to the sponsorID to in the TEAM PART
-10) My Team (Package) Total / one package
-11) Reports
+1) Add Fund - Admin
+2) Calculate TRX according to USDT API
+3) Create logs on every investment (setup it for the script too)
+4) Validate while selecting one plan to check his FUND
 
 coinpayment
 cryptocompare
 
 # Questions
-1) TRX or any other coin
-2) TOPUP Wallet (Fund wallet) or Wallet (Withdrawal income) difference
+1) TRX medium of transaction (ins or outs)
+2) TOPUP Wallet (used as ins or FUND wallet) or Wallet (used as outs or Withdrawal wallet) difference
 3) Withdrawal System (Directly paid using coinpayment send Tron)
-4) Trades (Release) (Package input) (Not needed)
+<!-- 4) Trades (Release) (Package input) (Not needed For This Project) -->
