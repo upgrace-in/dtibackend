@@ -54,6 +54,38 @@ app.get('/plans', async (req, res) => {
     });
 })
 
+async function updateSponsorsTeamData(userID) {
+    const check = await Users.findOne({ userID: userID })
+    await Users.updateOne(
+        {
+            userID: userID
+        }, {
+        $set: {
+            team: parseInt(...check.team) + 1
+        }
+    })
+}
+
+async function recurseUpdateTeam(currentuser, teamDict, level) {
+    if (currentuser.connections === null) {
+        return null
+    } else {
+        try {
+            teamDict[level].push(currentuser)
+        } catch (e) {
+            teamDict[level] = []
+            teamDict[level].push(currentuser)
+        }
+        let cons = currentuser.connections
+        for (let i = 0; i < cons.length; i++) {
+            const val = await fetchuserdetails(cons[i].userID)
+            await recurseToNull(val, teamDict, level + 1)
+        }
+        return teamDict
+    }
+}
+
+
 app.post("/register", async (req, res) => {
     try {
         // The UserID should not exists
@@ -79,6 +111,11 @@ app.post("/register", async (req, res) => {
                     }]
                 }
             })
+
+            // Update the team number in the sponsors
+            // let teamDict = {}
+            // teamDict = await recurseUpdateTeam(req.body.userID, teamDict, 0)
+            // console.log(teamDict.length);
             res.json({ msg: true })
         } else
             res.send({ msg: false, response: "Something went wrong !!!" })
@@ -344,15 +381,37 @@ app.get("/checkID", async (req, res) => {
 })
 
 app.get("/income", async (req, res) => {
-    await IncomeModel.findOne({ userID: req.query.id }).then(val => {
-        if (val !== null)
-            res.send({ msg: true, response: val })
-        else
-            res.send({ msg: false })
-    });
+    // Create an empty dict
+    let finalDict = {}
+    // Fetch details like IDNO Team Package(InvestAMT)
+    try {
+        await Users.findOne({ userID: req.query.id }).then(async val => {
+            // Iterating over all the plans a user has and getting the total invested amount by the user.
+            let investAMT = 0
+            val.plans.map(plan => {
+                investAMT = parseFloat(plan.amount) + investAMT
+            })
+            finalDict['uID'] = val.uID
+            finalDict['team'] = val.team
+            finalDict['investAMT'] = investAMT
+
+            // Getting the income detail
+            await IncomeModel.findOne({ userID: req.query.id }).then(val => {
+                finalDict['incomes'] = val
+                if (val !== null)
+                    res.send({ msg: true, response: finalDict })
+                else
+                    res.send({ msg: false })
+            });
+        })
+    } catch (e) {
+        console.log(e);
+        res.send({ msg: false })
+    }
 })
 
 app.post("/login", async (req, res) => {
+    console.log(req.body);
     try {
         const check = await Users.findOne({ userID: req.body.userID })
         if (check.password == req.body.password) {
@@ -407,6 +466,6 @@ app.get("/logout", async (req, res) => {
 //     await dailyProfit()
 // }, 3000)
 
-app.listen(9000, () => {
+app.listen(9090, () => {
     console.log("Connected !!!");
 })

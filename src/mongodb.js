@@ -56,6 +56,10 @@ const UserSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    team: {
+        type: String,
+        default: 1
+    },
     plans: {
         type: [{
             date: { type: Date, default: Date.now },
