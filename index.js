@@ -44,6 +44,8 @@ app.get('/', (req, res) => {
     res.send("Hari Bol")
 });
 
+// app.use('/', express.static(__dirname + '/server/build'))
+
 app.get('/plans', async (req, res) => {
     var collection = db.collection('plans');
     collection.find().toArray(function (err, plans) {
@@ -54,34 +56,26 @@ app.get('/plans', async (req, res) => {
     });
 })
 
-async function updateSponsorsTeamData(userID) {
-    const check = await Users.findOne({ userID: userID })
+async function updateSponsorsTeamData(user) {
     await Users.updateOne(
         {
-            userID: userID
+            userID: user.userID
         }, {
         $set: {
-            team: parseInt(...check.team) + 1
+            team: parseInt(...user.team) + 1
         }
     })
 }
 
-async function recurseUpdateTeam(currentuser, teamDict, level) {
-    if (currentuser.connections === null) {
+async function recurseUpdateTeam(userDict) {
+    if (userDict.sponsorID === 'null') {
         return null
     } else {
-        try {
-            teamDict[level].push(currentuser)
-        } catch (e) {
-            teamDict[level] = []
-            teamDict[level].push(currentuser)
-        }
-        let cons = currentuser.connections
-        for (let i = 0; i < cons.length; i++) {
-            const val = await fetchuserdetails(cons[i].userID)
-            await recurseToNull(val, teamDict, level + 1)
-        }
-        return teamDict
+        // Taking the sponsorID of the userDICt and update the team field
+        const val = await fetchuserdetails(userDict.sponsorID)
+        await updateSponsorsTeamData(val)
+        // Same goes for the others till reached to null
+        return await recurseUpdateTeam(val)
     }
 }
 
@@ -113,9 +107,8 @@ app.post("/register", async (req, res) => {
             })
 
             // Update the team number in the sponsors
-            // let teamDict = {}
-            // teamDict = await recurseUpdateTeam(req.body.userID, teamDict, 0)
-            // console.log(teamDict.length);
+            await recurseUpdateTeam(req.body)
+
             res.json({ msg: true })
         } else
             res.send({ msg: false, response: "Something went wrong !!!" })
@@ -129,20 +122,23 @@ async function fetchuserdetails(userID) {
     return await Users.findOne({ userID: userID }).then(val => {
         return val
     })
-
 }
 
 app.get("/directUsers", async (req, res) => {
     try {
         // fetch the user's connections
-        await Users.findOne({ userID: 'member' }).then(async val => {
+        await Users.findOne({ userID: req.query.id }).then(async val => {
             // create a empty arr
             let directusers = []
             // iterate through the connections and fetch their details put into the above dict
             let cons = val.connections
             for (let i = 0; i < cons.length; i++) {
                 const val = await fetchuserdetails(cons[i].userID)
-                directusers.push(val)
+                let investAMT = 0
+                val.plans.map(plan => {
+                    investAMT = parseFloat(plan.amount) + investAMT
+                })
+                directusers.push({ val, investAMT: investAMT })
             }
             // return the dict
             res.send({ msg: true, response: directusers })
@@ -174,7 +170,7 @@ async function recurseToNull(currentuser, teamDict, level) {
 
 app.get("/myTeam", async (req, res) => {
     try {
-        await fetchuserdetails('member').then(async val => {
+        await fetchuserdetails(req.query.id).then(async val => {
             let teamDict = {}
             teamDict = await recurseToNull(val, teamDict, 0)
             res.send({ msg: true, response: teamDict })
@@ -397,11 +393,12 @@ app.get("/income", async (req, res) => {
 
             // Getting the income detail
             await IncomeModel.findOne({ userID: req.query.id }).then(val => {
-                finalDict['incomes'] = val
-                if (val !== null)
-                    res.send({ msg: true, response: finalDict })
-                else
-                    res.send({ msg: false })
+                if (val !== null) {
+                    finalDict['incomes'] = val
+                } else {
+                    finalDict['incomes'] = 0
+                }
+                res.send({ msg: true, response: finalDict })
             });
         })
     } catch (e) {
@@ -462,8 +459,8 @@ app.get("/logout", async (req, res) => {
 });
 
 // setTimeout(async () => {
-//     await dailyLevelIncome()
-//     await dailyProfit()
+//     const user = await Users.findOne({ userID: 'member8' })
+//     await recurseUpdateTeam(user)
 // }, 3000)
 
 app.listen(5050, () => {
