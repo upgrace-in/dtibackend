@@ -6,31 +6,31 @@ require('dotenv').config()
 app.use(express.json())
 app.use(cors())
 
-// const session = require('express-session')
-// const MongoDBStore = require('connect-mongodb-session')(session)
+const session = require('express-session')
+const MongoDBStore = require('connect-mongodb-session')(session)
 
-// const MAX_AGE = 1000 * 60 * 60 * 24 // 1 day
+const MAX_AGE = 1000 * 60 * 60 * 24 // 1 day
 
 // setting up connect-mongodb-session store
-// const mongoDBstore = new MongoDBStore({
-//     uri: process.env.MONGO_URL,
-//     collection: 'mySessions',
-// })
+const mongoDBstore = new MongoDBStore({
+    uri: process.env.MONGO_URL,
+    collection: 'mySessions',
+})
 
-// app.use(
-//     session({
-//         secret: 'a1s2d3f4g5h6',
-//         name: 'session-id',
-//         store: mongoDBstore,
-//         cookie: {
-//             maxAge: MAX_AGE,
-//             sameSite: false,
-//             secure: false, // to turn on just in production
-//         },
-//         resave: true,
-//         saveUninitialized: false,
-//     })
-// )
+app.use(
+    session({
+        secret: 'a1s2d3f4g5h6',
+        name: 'session-id',
+        store: mongoDBstore,
+        cookie: {
+            maxAge: MAX_AGE,
+            sameSite: false,
+            secure: false, // to turn on just in production
+        },
+        resave: true,
+        saveUninitialized: false,
+    })
+)
 
 app.get('/isAuth', async (req, res) => {
     // return res.json({ msg: false })
@@ -341,7 +341,6 @@ app.post("/addPlan", async (req, res) => {
         const userID = req.body.userID
         // Fetching the user & plan details
         const check = await Users.findOne({ userID: userID })
-        // const income = await IncomeModel.findOne({ userID: userID })
         const plan = await db.collection('plans').findOne({ planID: req.body.planID });
 
         // Updating the plan if the criteria matches
@@ -356,9 +355,14 @@ app.post("/addPlan", async (req, res) => {
         }
         // criteria cheking if the plan min & max invest
         if ((parseFloat(plan.minInvest) < parseFloat(req.body.amount)) && (parseFloat(req.body.amount) < parseFloat(plan.maxInvest))) {
-            // const income = await IncomeModel.findOne({ userID: userID })
-            // if(parseFloat(income.wallet)) 
-            await Users.updateOne(filter, updateDoc)
+            const income = await IncomeModel.findOne({ userID: userID })
+            if (parseFloat(income.wallet) > parseFloat(req.body.amount)) {
+                // Updating the wallet
+                let wallet = parseFloat(income.wallet) - parseFloat(req.body.amount)
+                await IncomeModel.findOne({ userID: userID }, { wallet: wallet })
+                await Users.updateOne(filter, updateDoc)
+            } else
+                throw new Error
         } else
             throw new Error;
 
@@ -420,7 +424,8 @@ app.post("/login", async (req, res) => {
         const check = await Users.findOne({ userID: req.body.userID })
         if (check.password == req.body.password) {
             const userSession = { userID: check.userID, is_admin: check.is_admin }
-            res.json({ msg: true, userSession })
+            req.session.user = userSession
+            res.json({ msg: true, userSession: userSession, session: req.session })
         } else
             res.send({ msg: false, response: "Password doesn't matched !!!" })
     } catch (e) {
@@ -431,44 +436,47 @@ app.post("/login", async (req, res) => {
 app.post("/fundManagment", async (req, res) => {
     try {
         const check = await IncomeModel.findOne({ userID: req.body.userID });
-
-        let amt = req.body.amt
-        let fundType = req.body.fundType
-        let finaldic = {}
+ 
+        let amt = req.body.amount
+        let fundType = req.body.walletType
+        let finaldic = {}   
 
         if (req.body.type === 'transferFund') {
+            // Setting the default amt incase the user is new
             finaldic[fundType] = amt
+            // Checking if teh user's income db is theri if not directly update hte new data
             if (check !== null) {
                 if ((fundType === 'topupwallet') && (check.topupwallet !== undefined)) {
                     amt = parseFloat(check.topupwallet) + parseFloat(amt)
-                    finaldic = { topupwallet: amt }
+                    finaldic['topupwallet'] = amt
                 } else if (check.wallet !== undefined) {
                     amt = parseFloat(check.wallet) + parseFloat(amt)
-                    finaldic = { wallet: amt }
+                    // finaldic = { wallet: amt }
+                    finaldic['wallet'] = amt
                 }
             }
         } else {
             // Deduct Fund
             finaldic[fundType] = 0
             if (check !== null)
-                if ((fundType === 'topupwallet') && (check.topupwallet !== undefined)) {
+                if ((fundType === 'topupwallet') && (check.topupwallet !== undefined) && (parseFloat(check.topupwallet) > parseFloat(amt))) {
                     amt = parseFloat(check.topupwallet) - parseFloat(amt)
-                    finaldic = { topupwallet: amt }
-                } else if (check.wallet !== undefined) {
+                    finaldic['topupwallet'] = amt
+                } else if ((check.wallet !== undefined) && (parseFloat(check.wallet) > parseFloat(amt))) {
                     amt = parseFloat(check.wallet) - parseFloat(amt)
-                    finaldic = { wallet: amt }
+                    finaldic['wallet'] = amt
                 }
         }
 
         await IncomeModel.updateOne(
-            { userID: req.body.userID },
+            { userID: check.userID },
             finaldic,
             { upsert: true });
 
         res.json({ msg: true })
     } catch (e) {
         console.log(e);
-        res.send({ msg: false, response: "Invalid User !!!" })
+        res.send({ msg: false, response: "Unknown error occured !!!" })
     }
 })
 
