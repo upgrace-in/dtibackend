@@ -97,7 +97,23 @@ const IncomeSchema = new mongoose.Schema({
     }
 })
 
+
+const Logschema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    investedAMT: {
+        type: String
+    },
+    doj: {
+        type: Date,
+        default: Date.now
+    }
+})
+
 const Users = new mongoose.model("Users", UserSchema)
 const IncomeModel = new mongoose.model("Income", IncomeSchema)
+const Logs = new mongoose.model("Logs", Logschema)
 
-module.exports = { Users, db, IncomeModel }
+module.exports = { Users, db, IncomeModel, Logs }
