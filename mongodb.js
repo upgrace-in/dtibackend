@@ -78,22 +78,28 @@ const IncomeSchema = new mongoose.Schema({
         required: true
     },
     directIncome: {
-        type: String
+        type: String,
+        default: "0"
     },
     levelIncome: {
-        type: String
+        type: String,
+        default: "0"
     },
     dailyProfit: {
-        type: String
+        type: String,
+        default: "0"
     },
     dailyLevelIncome: {
-        type: String
+        type: String,
+        default: "0"
     },
     wallet: {
-        type: String
+        type: String,
+        default: "0"
     },
     topupwallet: {
-        type: String
+        type: String,
+        default: "0"
     }
 })
 
@@ -128,9 +134,23 @@ const sessionSchema = new mongoose.Schema({
     }
 });
 
+const uIDSchema = new mongoose.Schema({
+    uID: {
+        type: String,
+        required: true,
+        default: "100"
+    },
+    lastuID: {
+        type: String,
+        required: true,
+        default: "100"
+    }
+});
+
 const Sessions = new mongoose.model("Sessions", sessionSchema)
 const Users = new mongoose.model("Users", UserSchema)
-const IncomeModel = new mongoose.model("Income", IncomeSchema)
+const Incomes = new mongoose.model("Income", IncomeSchema)
 const Logs = new mongoose.model("Logs", Logschema)
+const LastuID = new mongoose.model("uID", uIDSchema)
 
-module.exports = { Users, db, IncomeModel, Logs, Sessions }
+module.exports = { Users, LastuID, db, Incomes, Logs, Sessions }

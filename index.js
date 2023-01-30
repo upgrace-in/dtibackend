@@ -1,11 +1,18 @@
 const express = require('express')
 const app = express()
-const { Users, db, IncomeModel, Sessions } = require('./mongodb')
+const { Users, db, Incomes, Sessions } = require('./mongodb')
 const cors = require('cors')
 const crypto = require('crypto')
 require('dotenv').config()
 app.use(express.json())
 app.use(cors())
+
+const { updateIncome } = require('./src/user/updateIncome')
+
+const { directIncome } = require('./src/user/directIncome')
+const { levelIncome } = require('./src/user/levelIncome')
+const { dailyProfit } = require('./src/user/dailyProfit')
+const { dailyLevelIncome } = require('./src/user/dailyLevelIncome')
 
 app.get('/isAuth', async (req, res) => {
     // return res.json({ msg: false })
@@ -33,66 +40,13 @@ app.get('/plans', async (req, res) => {
     });
 })
 
-async function updateSponsorsTeamData(user) {
-    await Users.updateOne(
-        {
-            userID: user.userID
-        }, {
-        $set: {
-            team: parseInt(...user.team) + 1
-        }
-    })
-}
 
-async function recurseUpdateTeam(userDict) {
-    if (userDict.sponsorID === 'null') {
-        return null
-    } else {
-        // Taking the sponsorID of the userDICt and update the team field
-        const val = await fetchuserdetails(userDict.sponsorID)
-        await updateSponsorsTeamData(val)
-        // Same goes for the others till reached to null
-        return await recurseUpdateTeam(val)
-    }
-}
 
+
+const { register } = require('./src/register')
 
 app.post("/register", async (req, res) => {
-    try {
-        // The UserID should not exists
-        const userExists = await Users.findOne({ userID: req.body.userID })
-        if (userExists === null) {
-            // Registereing the user
-            await Users.insertMany(
-                {
-                    ...req.body,
-                    uID: parseFloat(req.body.uID) + 1,
-                }
-            )
-
-            // Update the user to the sponsor's collection
-            const check = await Users.findOne({ userID: req.body.sponsorID })
-            await Users.updateOne(
-                {
-                    userID: req.body.sponsorID
-                }, {
-                $set: {
-                    connections: [...check.connections, {
-                        userID: req.body.userID
-                    }]
-                }
-            })
-
-            // Update the team number in the sponsors
-            await recurseUpdateTeam(req.body)
-
-            res.json({ msg: true })
-        } else
-            res.send({ msg: false, response: "Something went wrong !!!" })
-    } catch (e) {
-        console.log(e);
-        res.send({ msg: false, response: "Something went wrong !!!" })
-    }
+    await register(req, res, Users)
 })
 
 async function fetchuserdetails(userID) {
@@ -158,163 +112,16 @@ app.get("/myTeam", async (req, res) => {
     }
 });
 
-async function updateIncome(userID, dict) {
-    const filter = { userID: userID };
-    const updateDoc = {
-        $set: dict
-    }
-    const options = { upsert: true }
-    await IncomeModel.findOneAndUpdate(filter, updateDoc, options)
-}
 
-async function directIncome(upline, directIncomePercent, amt) {
-    // directincome % -> calculate the % -> update to the upline
-    const oldIncome = await IncomeModel.findOne({ userID: upline });
 
-    // Calculating for the final directincome for the upline
-    let income = (parseFloat(amt) * parseFloat(directIncomePercent)) / 100
 
-    // If the upline already has some income add it to it
-    if ((oldIncome !== null) && (oldIncome.directIncome !== undefined))
-        income = income + parseFloat(oldIncome.directIncome)
 
-    // Down work is just to update 
-    await updateIncome(upline, { directIncome: income })
-}
 
-async function dailyProfit() {
-    // Loop through all the users
-    const users = await Users.find()
-    for (var i = 0; i < users.length; i++) {
-
-        let finalIncome = 0
-        let plans = users[i].plans
-
-        // Loop through all the plans a user has (put the amt invested in a variable)
-        for (var j = 0; j < plans.length; j++) {
-
-            // Fetch the plan details (dailyProfitPercent)
-            const plan = await db.collection('plans').findOne({ planID: parseInt(plans[j].planID) })
-            let dailyProfitPercent = parseFloat(plan.dailyProfit)
-
-            // Invested amt per plan
-            let investAmt = parseFloat(plans[j].amount)
-
-            // Fetch Calculate the income (Add the income to the finalIncome)
-            finalIncome = finalIncome + (parseFloat(investAmt) * parseFloat(dailyProfitPercent)) / 100
-        }
-        // Update to the DB
-        // Fetch the user's old dailylevelincome
-        const oldIncome = await IncomeModel.findOne({ userID: users[i].userID });
-        if ((oldIncome !== null) && (oldIncome.dailyProfit !== undefined))
-            // Adding the old income to the new one
-            finalIncome = parseFloat(finalIncome) + parseFloat(oldIncome.dailyProfit)
-        await updateIncome(users[i].userID, { dailyProfit: finalIncome })
-    }
-}
-
-async function updateFinalIncome(planDict, user, finalIncome) {
-    // Invested amt per plan
-    let investAmt = parseFloat(planDict.amount)
-    let currentUpline = user
-
-    // Fetch the plan details (dailyLevelIncomePercents + LevelIncome)
-    const plan = await db.collection('plans').findOne({ planID: parseInt(planDict.planID) })
-    let LevelPercent = plan.levelIncome.split(',')
-    let DailylevelPercent = plan.dailyLevelIncome.split(',')
-
-    // Loop through the levelincome
-    for (var k = 0; k < LevelPercent.length; k++) {
-
-        // Checking if the upline is null or not
-        try {
-            if (currentUpline.sponsorID !== "null") {
-
-                // Calculate the income (acc to dailyLevelIncomePercents of levelincome of AMT)
-                let income = ((parseFloat(investAmt) * parseFloat(LevelPercent[k])) / 100) * parseFloat(DailylevelPercent[k]) / 100
-
-                finalIncome[currentUpline.sponsorID] = income
-
-            }
-        } catch (e) {
-            break
-        }
-
-        // Updating the currentupline in each loop
-        currentUpline = await Users.findOne({ userID: currentUpline.sponsorID })
-    }
-
-    return finalIncome
-}
-
-async function dailyLevelIncome() {
-    // Loop through all the users
-    const users = await Users.find()
-    for (var i = 0; i < users.length; i++) {
-
-        let finalIncome = {}
-        let plans = users[i].plans
-        let currentUpline = users[i]
-
-        // checking if the upline is not null
-        if (currentUpline.sponsorID !== "null") {
-            // Loop through all the plans a user has (put the amt invested in a variable)
-            for (var j = 0; j < plans.length; j++) {
-
-                finalIncome = await updateFinalIncome(plans[j], currentUpline, finalIncome)
-
-            }
-        }
-        // Update to the DB
-        Object.keys(finalIncome).forEach(async key => {
-            // Fetch the user's old dailylevelincome
-            const oldIncome = await IncomeModel.findOne({ userID: key });
-            if ((oldIncome !== null) && (oldIncome.dailyLevelIncome !== undefined))
-                // Adding the old income to the new one
-                finalIncome[key] = parseFloat(finalIncome[key]) + parseFloat(oldIncome.dailyLevelIncome)
-            await updateIncome(key, { dailyLevelIncome: finalIncome[key] })
-        })
-    }
-}
-
-async function levelIncome(user, levels, amt) {
-
-    let finalIncome = {}
-    let LevelPercent = levels.split(',')
-    let currentUpline = user
-
-    // Looping through the level percents
-    for (var i = 0; i < LevelPercent.length; i++) {
-        // Calculating income according to the levelpercents
-        let income = (parseFloat(amt) * parseFloat(LevelPercent[i])) / 100
-
-        // Checking if the upline is null or not
-        try {
-            if (currentUpline.sponsorID !== "null")
-                finalIncome[currentUpline.sponsorID] = income
-        } catch (e) {
-            break
-        }
-
-        // Updating the currentupline in each loop
-        currentUpline = await Users.findOne({ userID: currentUpline.sponsorID })
-    }
-
-    Object.keys(finalIncome).forEach(async key => {
-        // Fetch the user's old dailylevelincome
-        const oldIncome = await IncomeModel.findOne({ userID: key });
-        if ((oldIncome !== null) && (oldIncome.levelIncome !== undefined))
-            // Adding the old income to the new one
-            finalIncome[key] = parseFloat(finalIncome[key]) + parseFloat(oldIncome.levelIncome)
-        await updateIncome(key, { levelIncome: finalIncome[key] })
-    })
-
-}
 
 app.post("/addPlan", async (req, res) => {
     try {
         await checkSessionID(req, res);
-        const userID = req.body.userID
+        const userID = req.body.userSession.userID
         // Fetching the user & plan details
         const check = await Users.findOne({ userID: userID })
         const plan = await db.collection('plans').findOne({ planID: req.body.planID });
@@ -329,28 +136,46 @@ app.post("/addPlan", async (req, res) => {
                 }]
             }
         }
+
         // criteria cheking if the plan min & max invest
         if ((parseFloat(plan.minInvest) < parseFloat(req.body.amount)) && (parseFloat(req.body.amount) < parseFloat(plan.maxInvest))) {
-            const income = await IncomeModel.findOne({ userID: userID })
+
+            const income = await Incomes.findOne({ userID: userID })
+
             if (parseFloat(income.wallet) > parseFloat(req.body.amount)) {
+
                 // Updating the wallet
                 let wallet = parseFloat(income.wallet) - parseFloat(req.body.amount)
-                await IncomeModel.findOne({ userID: userID }, { wallet: wallet })
-                await Users.updateOne(filter, updateDoc)
-            } else
-                throw new Error
-        } else
-            throw new Error;
+                await updateIncome(userID, { wallet: wallet }).then(async (val) => {
+                    if (val) {
 
-        // Update direct & level income
-        if (check.sponsorID !== "null")
-            await directIncome(check.sponsorID, plan.directIncome, req.body.amount)
-        await levelIncome(check, plan.levelIncome, req.body.amount)
+                        // Updating the plan to the users database
+                        await Users.updateOne(filter, updateDoc)
+
+                        // Update direct & level income
+                        if (check.sponsorID !== "null")
+                            await directIncome(check.sponsorID, plan.directIncome, req.body.amount).then(val => {
+                                if (val !== true)
+                                    throw "Error while updating durect income at userID= " + val.userID
+                            })
+
+                        await levelIncome(check, plan.levelIncome, req.body.amount).then(val => {
+                            if (val.msg !== true)
+                                throw "Error while updating level income at userID= " + val.userID
+                        })
+
+                    } else
+                        throw "Error in updating income..."
+                })
+            } else
+                throw "Insufficient Balance !!!"
+        } else
+            throw "Amount should be within min. & max. investment of the plan !!!";
         res.json({ msg: true })
 
     } catch (e) {
         console.log(e);
-        res.send({ msg: false, response: "Something went wrong !!!" })
+        res.send({ msg: false, response: e })
     }
 })
 
@@ -379,7 +204,7 @@ app.get("/income", async (req, res) => {
             finalDict['investAMT'] = investAMT
 
             // Getting the income detail
-            await IncomeModel.findOne({ userID: req.query.id }).then(val => {
+            await Incomes.findOne({ userID: req.query.id }).then(val => {
                 if (val !== null) {
                     finalDict['incomes'] = val
                 } else {
@@ -429,18 +254,19 @@ app.get('/logout', (req, res) => {
 
 app.post("/fundManagment", async (req, res) => {
     try {
-        await checkSessionID(req, res);
-        
-        const check = await IncomeModel.findOne({ userID: req.body.userID });
+        await checkSessionID(req, res)
+        // fetch the user
+        const check = await Incomes.findOne({ userID: req.body.userID });
 
         let amt = req.body.amount
         let fundType = req.body.walletType
         let finaldic = {}
 
+        // checking the type of fund it is
         if (req.body.type === 'transferFund') {
             // Setting the default amt incase the user is new
             finaldic[fundType] = amt
-            // Checking if teh user's income db is theri if not directly update hte new data
+            // Checking if the user's income db is their if not directly update the new data
             if (check !== null) {
                 if ((fundType === 'topupwallet') && (check.topupwallet !== undefined)) {
                     amt = parseFloat(check.topupwallet) + parseFloat(amt)
@@ -455,6 +281,7 @@ app.post("/fundManagment", async (req, res) => {
             // Deduct Fund
             finaldic[fundType] = 0
             if (check !== null)
+                // condiiton to check if the old data is available
                 if ((fundType === 'topupwallet') && (check.topupwallet !== undefined) && (parseFloat(check.topupwallet) > parseFloat(amt))) {
                     amt = parseFloat(check.topupwallet) - parseFloat(amt)
                     finaldic['topupwallet'] = amt
@@ -464,7 +291,7 @@ app.post("/fundManagment", async (req, res) => {
                 }
         }
 
-        await IncomeModel.updateOne(
+        await Incomes.updateOne(
             { userID: check.userID },
             finaldic,
             { upsert: true });
@@ -476,10 +303,14 @@ app.post("/fundManagment", async (req, res) => {
     }
 })
 
-// setTimeout(async () => {
-//     const user = await Users.findOne({ userID: 'member8' })
-//     await recurseUpdateTeam(user)
-// }, 3000)
+setTimeout(async () => {
+    await dailyLevelIncome().then(val => {
+        console.log(val);
+    })
+    await dailyProfit().then(val => {
+        console.log(val);
+    })
+}, 2000)
 
 app.listen(process.env.PORT, () => {
     console.log("Connected !!!");

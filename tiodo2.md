@@ -12,3 +12,7 @@ https://stackoverflow.com/questions/5370846/how-do-you-use-mongoose-without-defi
 
 to vercel
 https://www.youtube.com/watch?v=YYmzj5DK_5s&ab_channel=TuatTranAnh
+
+Deffault
+1) admin & member should be thier
+2) lastuids shoudl be thier 
