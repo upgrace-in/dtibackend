@@ -52,7 +52,7 @@ app.post("/register", async (req, res) => {
 
 app.get("/reports", async (req, res) => {
     // reportType, is_admin, userID
-    if (req.query.is_admin)
+    if (req.query.is_admin === true)
         await generateReports(req, res, {})
     else
         await generateReports(req, res, { userID: req.query.userID })
