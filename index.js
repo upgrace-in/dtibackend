@@ -313,6 +313,7 @@ async function levelIncome(user, levels, amt) {
 
 app.post("/addPlan", async (req, res) => {
     try {
+        await checkSessionID(req, res);
         const userID = req.body.userID
         // Fetching the user & plan details
         const check = await Users.findOne({ userID: userID })
@@ -394,11 +395,16 @@ app.get("/income", async (req, res) => {
 })
 
 async function checkSessionID(req, res) {
-    const collection = await Sessions.findOne({ sessionID: req.body.sessionID });
-    if (collection === null)
+    try {
+        const collection = await Sessions.findOne({ sessionID: req.body.userSession.sessionID });
+        if (collection === null)
+            res.send({ msg: false })
+        else
+            res.send({ msg: true })
+    } catch (e) {
+        // console.log(e);
         res.send({ msg: false })
-    else
-        return true
+    }
 }
 
 app.post("/login", async (req, res) => {
