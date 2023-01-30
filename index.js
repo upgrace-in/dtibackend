@@ -303,14 +303,14 @@ app.post("/fundManagment", async (req, res) => {
     }
 })
 
-setTimeout(async () => {
-    await dailyLevelIncome().then(val => {
-        console.log(val);
-    })
-    await dailyProfit().then(val => {
-        console.log(val);
-    })
-}, 2000)
+// setTimeout(async () => {
+//     await dailyLevelIncome().then(val => {
+//         console.log(val);
+//     })
+//     await dailyProfit().then(val => {
+//         console.log(val);
+//     })
+// }, 2000)
 
 app.listen(process.env.PORT, () => {
     console.log("Connected !!!");
