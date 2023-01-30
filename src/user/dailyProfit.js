@@ -1,4 +1,4 @@
-const { Users, Incomes, db } = require('../../mongodb')
+const { Users, Incomes, db, DailyprofitLogs } = require('../../mongodb')
 const { updateIncome } = require('./updateIncome')
 
 async function dailyProfit() {
@@ -26,14 +26,34 @@ async function dailyProfit() {
             // Update to the DB
             // Fetch the user's old dailylevelincome
             const oldIncome = await Incomes.findOne({ userID: users[i].userID });
+
             if ((oldIncome !== null) && (oldIncome.dailyProfit !== undefined))
                 // Adding the old income to the new one
                 finalIncome = parseFloat(finalIncome) + parseFloat(oldIncome.dailyProfit)
-            await updateIncome(users[i].userID, { dailyProfit: finalIncome }).then(val => {
-                if (val !== true) {
-                    throw "Error in updating income at userID: " + users[i].userID
-                }
-            })
+
+            await updateIncome(users[i].userID, { dailyProfit: finalIncome }).then(async (val) => {
+                if (val)
+                    // fethching the days
+                    await DailyprofitLogs.findOne({ userID: users[i].userID }).then(async (val, err) => {
+                        if (val)
+                            // updating the dailyprofit logs 
+                            days = parseInt(val.days)
+                        else
+                            days = 0
+                        await DailyprofitLogs.insertMany(
+                            {
+                                userID: users[i].userID,
+                                days: days + 1,
+                                amount: finalIncome
+                            }
+                        ).then(async (val, err) => {
+                            if (val === false)
+                                throw users[i].userID
+                        })
+                    })
+                else
+                    throw users[i].userID
+            });
         }
         return { msg: true }
     } catch (e) {

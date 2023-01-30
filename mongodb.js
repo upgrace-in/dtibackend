@@ -23,7 +23,7 @@ const UserSchema = new mongoose.Schema({
         required: true
     },
     doj: {
-        type: Date,
+        type: Number,
         default: Date.now
     },
     userID: {
@@ -60,7 +60,7 @@ const UserSchema = new mongoose.Schema({
     },
     plans: {
         type: [{
-            date: { type: Date, default: Date.now },
+            date: { type: Number, default: Date.now },
             planID: { type: String },
             amount: { type: String }
         }]
@@ -104,19 +104,60 @@ const IncomeSchema = new mongoose.Schema({
 })
 
 
-const Logschema = new mongoose.Schema({
+const TradeSchema = new mongoose.Schema({
     userID: {
         type: String,
         required: true
     },
-    investedAMT: {
-        type: String
-    },
-    doj: {
-        type: Date,
+    date: {
+        type: Number,
         default: Date.now
     }
-})
+}, { strict: false })
+
+const LevelSchema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        default: Date.now
+    }
+}, { strict: false })
+
+const DailyLevelSchema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        default: Date.now
+    }
+}, { strict: false })
+
+const DailySchema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        default: Date.now
+    }
+}, { strict: false })
+
+const DirectSchema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        default: Date.now
+    }
+}, { strict: false })
 
 
 const sessionSchema = new mongoose.Schema({
@@ -150,7 +191,26 @@ const uIDSchema = new mongoose.Schema({
 const Sessions = new mongoose.model("Sessions", sessionSchema)
 const Users = new mongoose.model("Users", UserSchema)
 const Incomes = new mongoose.model("Income", IncomeSchema)
-const Logs = new mongoose.model("Logs", Logschema)
 const LastuID = new mongoose.model("uID", uIDSchema)
 
-module.exports = { Users, LastuID, db, Incomes, Logs, Sessions }
+// Reports
+const Trades = new mongoose.model("Trades", TradeSchema)
+const DailyprofitLogs = new mongoose.model("DailyprofitLogs", DailySchema)
+const DirectincomeLogs = new mongoose.model("DirectincomeLogs", DirectSchema)
+const DailyLevelLogs = new mongoose.model("DailyLevelLogs", DailyLevelSchema)
+const LevelLogs = new mongoose.model("LevelLogs", LevelSchema)
+
+module.exports = {
+    Users,
+    LastuID,
+    db,
+    Incomes,
+    
+    Trades,
+    DailyprofitLogs,
+    DirectincomeLogs,
+    DailyLevelLogs,
+    LevelLogs,
+
+    Sessions
+}
