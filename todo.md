@@ -1,38 +1,16 @@
-https://dtiworld.online/soft/admin
-admin user
-administrator
-pw
-123456
-
-https://dtiworld.online/soft/member/
-top user
-member
-pw
-123456
-
-
-cpanel user
-dtiworld
-https://dtiworld.online:2083/
-cpanel
-pw
-+multi+123+
-
 ssh root@143.198.149.232
 qaz2Wsxedc
 
-
 # TODO
-1) Add Fund - Admin
-2) Calculate TRX according to USDT API
-3) Create logs on every investment (setup it for the script too)
-4) Validate while selecting one plan to check his FUND
+1) Calculate TRX according to USDT API
 
-coinpayment
-cryptocompare
 
-# Questions
-1) TRX medium of transaction (ins or outs)
-2) TOPUP Wallet (used as ins or FUND wallet) or Wallet (used as outs or Withdrawal wallet) difference
-3) Withdrawal System (Directly paid using coinpayment send Tron)
-<!-- 4) Trades (Release) (Package input) (Not needed For This Project) -->
+# Session
+1) For anytype of posting or data change we need to verify the sessionID if that's exists and didn't expired yet
+2) Steps
+   <!-- 1) save the session as a cookie to thee client -->
+   2) send the userSession in every request
+   3) verify the sesssionID 
+      1) if yes good otherwise throw new error
+   4) Rest things are good
+    

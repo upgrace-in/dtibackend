@@ -1,36 +1,11 @@
 const express = require('express')
 const app = express()
-const { Users, db, IncomeModel } = require('./mongodb')
+const { Users, db, IncomeModel, Sessions } = require('./mongodb')
 const cors = require('cors')
+const crypto = require('crypto')
 require('dotenv').config()
 app.use(express.json())
 app.use(cors())
-
-const session = require('express-session')
-const MongoDBStore = require('connect-mongodb-session')(session)
-
-const MAX_AGE = 1000 * 60 * 60 * 24 // 1 day
-
-// setting up connect-mongodb-session store
-const mongoDBstore = new MongoDBStore({
-    uri: process.env.MONGO_URL,
-    collection: 'mySessions',
-})
-
-app.use(
-    session({
-        secret: 'a1s2d3f4g5h6',
-        name: 'session-id',
-        store: mongoDBstore,
-        cookie: {
-            maxAge: MAX_AGE,
-            sameSite: false,
-            secure: false, // to turn on just in production
-        },
-        resave: true,
-        saveUninitialized: false,
-    })
-)
 
 app.get('/isAuth', async (req, res) => {
     // return res.json({ msg: false })
@@ -418,28 +393,41 @@ app.get("/income", async (req, res) => {
     }
 })
 
+async function checkSessionID(req, res) {
+    const collection = await Sessions.findOne({ sessionID: req.body.sessionID });
+    if (collection === null)
+        res.send({ msg: false })
+    else
+        return true
+}
+
 app.post("/login", async (req, res) => {
-    console.log(req.body);
     try {
         const check = await Users.findOne({ userID: req.body.userID })
-        if (check.password == req.body.password) {
-            const userSession = { userID: check.userID, is_admin: check.is_admin }
-            req.session.user = userSession
-            res.json({ msg: true, userSession: userSession, session: req.session })
+        if (check.password === req.body.password) {
+            const userSession = { userID: check.userID, is_admin: check.is_admin, sessionID: crypto.randomBytes(6).toString('hex') }
+            await Sessions.updateOne({ userID: req.body.userID }, { $set: userSession }, { upsert: true });
+            res.json({ msg: true, userSession: userSession })
         } else
             res.send({ msg: false, response: "Password doesn't matched !!!" })
     } catch (e) {
+        console.log(e);
         res.send({ msg: false, response: "Invalid User !!!" })
     }
 })
 
+app.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.send({ msg: true });
+});
+
 app.post("/fundManagment", async (req, res) => {
     try {
         const check = await IncomeModel.findOne({ userID: req.body.userID });
- 
+
         let amt = req.body.amount
         let fundType = req.body.walletType
-        let finaldic = {}   
+        let finaldic = {}
 
         if (req.body.type === 'transferFund') {
             // Setting the default amt incase the user is new

@@ -112,8 +112,25 @@ const Logschema = new mongoose.Schema({
     }
 })
 
+
+const sessionSchema = new mongoose.Schema({
+    sessionID: {
+        type: String,
+        required: true
+    },
+    userID: {
+        type: String,
+        required: true
+    },
+    is_admin: {
+        type: Boolean,
+        default: false
+    }
+});
+
+const Sessions = new mongoose.model("Sessions", sessionSchema)
 const Users = new mongoose.model("Users", UserSchema)
 const IncomeModel = new mongoose.model("Income", IncomeSchema)
 const Logs = new mongoose.model("Logs", Logschema)
 
-module.exports = { Users, db, IncomeModel, Logs }
+module.exports = { Users, db, IncomeModel, Logs, Sessions }
