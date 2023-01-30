@@ -17,6 +17,8 @@ const { dailyLevelIncome } = require('./src/user/dailyLevelIncome')
 const { register } = require('./src/register')
 const { addPlan } = require('./src/user/addPlan')
 
+const { generateReports } = require('./src/generateReports')
+
 // Admin
 const { manageFund } = require('./src/admin/manageFund')
 
@@ -46,6 +48,14 @@ app.get('/plans', async (req, res) => {
 
 app.post("/register", async (req, res) => {
     await register(req, res, Users)
+})
+
+app.get("/reports", async (req, res) => {
+    // reportType, is_admin, userID
+    if (req.query.is_admin)
+        await generateReports(req, res, {})
+    else
+        await generateReports(req, res, { userID: req.query.userID })
 })
 
 async function fetchuserdetails(userID) {
@@ -169,9 +179,9 @@ async function checkSessionID(req, res) {
         if (collection === null)
             res.send({ msg: false })
         else
-            return true
+            return collection
     } catch (e) {
-        // console.log(e);
+        console.log(e)
         res.send({ msg: false })
     }
 }
@@ -196,14 +206,15 @@ app.get('/logout', (req, res) => {
     res.send({ msg: true });
 });
 
-// setTimeout(async () => {
-//     await dailyLevelIncome().then(val => {
-//         console.log(val);
-//     })
-//     await dailyProfit().then(val => {
-//         console.log(val);
-//     })
-// }, 2000)
+setTimeout(async () => {
+    //     await dailyLevelIncome().then(val => {
+    //         console.log(val);
+    //     })
+    //     await dailyProfit().then(val => {
+    //         console.log(val);
+    //     })
+    // await generateReports(true, true, true)
+}, 2000)
 
 app.listen(process.env.PORT, () => {
     console.log("Connected !!!");
