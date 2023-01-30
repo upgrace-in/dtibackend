@@ -118,29 +118,50 @@ app.get("/checkID", async (req, res) => {
 })
 
 app.get("/income", async (req, res) => {
-    // Create an empty dict
-    let finalDict = {}
-    // Fetch details like IDNO Team Package(InvestAMT)
     try {
-        await Users.findOne({ userID: req.query.id }).then(async val => {
-            // Iterating over all the plans a user has and getting the total invested amount by the user.
-            let investAMT = 0
-            val.plans.map(plan => {
-                investAMT = parseFloat(plan.amount) + investAMT
-            })
-            finalDict['uID'] = val.uID
-            finalDict['team'] = val.team
-            finalDict['investAMT'] = investAMT
+        if (req.query.is_admin === 'true') {
+            filter = {}
+        } else {
+            filter = { userID: req.query.id }
+        }
+        await Users.find(filter).then(async users => {
 
-            // Getting the income detail
-            await Incomes.findOne({ userID: req.query.id }).then(val => {
-                if (val !== null) {
-                    finalDict['incomes'] = val
-                } else {
-                    finalDict['incomes'] = 0
+            let finalDict = {
+                uID: 0,
+                team: 0,
+                wallet: 0,
+                package: 0,
+                dailyProfit: 0,
+                directIncome: 0,
+                levelIncome: 0,
+                dailyLevelIncome: 0,
+                deposit: 0,
+                withdrawal: 0
+            }
+            for (var i = 0; i < users.length; i++) {
+
+                if (users[i].userID !== 'admin') {
+
+                    // Iterating over all the plans a user has and getting the total invested amount by the user.
+                    let package = 0
+                    users[i].plans.map(plan => {
+                        package = parseFloat(plan.amount) + package
+                    })
+                    finalDict.uID = parseInt(users[i].uID || 100)
+                    finalDict.team = finalDict.team + parseInt(users[i].team || 0)
+                    finalDict.package = finalDict.package + parseInt(package)
+
+                    // Getting the income detail
+                    await Incomes.findOne({ userID: users[i].userID }).then(val => {
+                        Object.keys(finalDict).forEach(async key => {
+                            if (val[key] !== undefined)
+                                finalDict[key] = (parseFloat(finalDict[key]) + parseFloat(val[key])).toFixed(2)
+                        })
+                    });
+
                 }
-                res.send({ msg: true, response: finalDict })
-            });
+            }
+            res.send({ msg: true, response: finalDict })
         })
     } catch (e) {
         console.log(e);

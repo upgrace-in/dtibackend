@@ -1,6 +1,6 @@
 const { Incomes } = require('../../mongodb');
 
-async function manageFund(rqe, res) {
+async function manageFund(req, res) {
     try {
 
         // fetch the user
