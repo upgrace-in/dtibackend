@@ -400,7 +400,7 @@ async function checkSessionID(req, res) {
         if (collection === null)
             res.send({ msg: false })
         else
-            res.send({ msg: true })
+            return true
     } catch (e) {
         // console.log(e);
         res.send({ msg: false })
@@ -429,6 +429,8 @@ app.get('/logout', (req, res) => {
 
 app.post("/fundManagment", async (req, res) => {
     try {
+        await checkSessionID(req, res);
+        
         const check = await IncomeModel.findOne({ userID: req.body.userID });
 
         let amt = req.body.amount
