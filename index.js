@@ -2,25 +2,23 @@ const express = require('express')
 const app = express()
 const { Users, db, Incomes, Sessions } = require('./mongodb')
 const cors = require('cors')
-const crypto = require('crypto')
+app.set('trust proxy', true)
+
 require('dotenv').config()
 app.use(express.json())
 app.use(cors())
 
-const { updateIncome } = require('./src/user/updateIncome')
-
-const { directIncome } = require('./src/user/directIncome')
-const { levelIncome } = require('./src/user/levelIncome')
 const { dailyProfit } = require('./src/user/dailyProfit')
 const { dailyLevelIncome } = require('./src/user/dailyLevelIncome')
 
 const { register } = require('./src/register')
 const { addPlan } = require('./src/user/addPlan')
-
 const { generateReports } = require('./src/generateReports')
+const { login, logout } = require('./src/user')
 
 // Admin
 const { manageFund } = require('./src/admin/manageFund')
+const { homeIncome } = require('./src/user/homeIncome')
 
 app.get('/isAuth', async (req, res) => {
     // return res.json({ msg: false })
@@ -36,6 +34,16 @@ app.get('/', (req, res) => {
     res.send("Hari Bol")
 });
 
+app.get('/loginDetails', async (req, res) => {
+    try {
+        const sessions = await Sessions.find({})
+        res.send({ msg: true, response: sessions })
+    } catch (e) {
+        console.log(e);
+        res.send({ msg: false, response: e })
+    }
+});
+
 app.get('/plans', async (req, res) => {
     var collection = db.collection('plans');
     collection.find().toArray(function (err, plans) {
@@ -44,6 +52,48 @@ app.get('/plans', async (req, res) => {
         else
             res.send({ msg: false })
     });
+})
+
+app.post("/allUsers", async (req, res) => {
+    try {
+        await checkSessionID(req, res).then(async val => {
+            let usersArr = []
+
+            await Users.find({}).then(async users => {
+
+                for (var i = 0; i < users.length; i++) {
+
+                    let finalDict = {}
+
+                    if (users[i].userID !== 'admin') {
+
+                        let package = 0
+                        users[i].plans.map(plan => {
+                            package = parseFloat(plan.amount) + package
+                        })
+                        finalDict.package = parseInt(package)
+                        finalDict['user'] = users[i]
+
+                        // Getting the income detail
+                        await Incomes.findOne({ userID: users[i].userID }).then(val => {
+                            finalDict['wallet'] = val.wallet
+                            finalDict['topupwallet'] = val.topupwallet
+                        });
+
+                        usersArr.push(finalDict)
+
+                    }
+                }
+
+            })
+
+            res.send({ msg: true, response: usersArr })
+
+        });
+    } catch (e) {
+        console.log(e);
+        res.send({ msg: false, response: e })
+    }
 })
 
 app.post("/register", async (req, res) => {
@@ -63,6 +113,48 @@ async function fetchuserdetails(userID) {
         return val
     })
 }
+
+app.get('/profileData', async (req, res) => {
+    try {
+        const user = await fetchuserdetails(req.query.id)
+        res.send({ msg: true, response: user })
+    } catch (e) {
+        console.log(e);
+        res.send({ msg: false, response: e })
+    }
+})
+
+app.post('/updateProfile', async (req, res) => {
+    try {
+        await checkSessionID(req, res).then(async val => {
+            const data = req.body
+            console.log(data);
+            await Users.updateOne(
+                { userID: data.userSession.userID },
+                {
+                    $set:
+                    {
+                        name: data.name,
+                        gender: data.gender,
+                        email: data.email,
+                        mobileNumber: data.mobileNumber,
+                        city: data.city,
+                        state: data.state,
+                        usdtAdd: data.usdtAdd,
+                        tronAdd: data.tronAdd
+                    }
+                }).then((val, err) => {
+                    if (val)
+                        res.send({ msg: true })
+                    else
+                        throw "Unable to Update Profile !!!"
+                })
+        })
+    } catch (e) {
+        console.log(e);
+        res.send({ msg: false, response: e })
+    }
+})
 
 async function recurseToNull(currentuser, teamDict, level) {
     if (currentuser.connections === null) {
@@ -118,55 +210,7 @@ app.get("/checkID", async (req, res) => {
 })
 
 app.get("/income", async (req, res) => {
-    try {
-        if (req.query.is_admin === 'true') {
-            filter = {}
-        } else {
-            filter = { userID: req.query.id }
-        }
-        await Users.find(filter).then(async users => {
-
-            let finalDict = {
-                uID: 0,
-                team: 0,
-                wallet: 0,
-                package: 0,
-                dailyProfit: 0,
-                directIncome: 0,
-                levelIncome: 0,
-                dailyLevelIncome: 0,
-                deposit: 0,
-                withdrawal: 0
-            }
-            for (var i = 0; i < users.length; i++) {
-
-                if (users[i].userID !== 'admin') {
-
-                    // Iterating over all the plans a user has and getting the total invested amount by the user.
-                    let package = 0
-                    users[i].plans.map(plan => {
-                        package = parseFloat(plan.amount) + package
-                    })
-                    finalDict.uID = parseInt(users[i].uID || 100)
-                    finalDict.team = finalDict.team + parseInt(users[i].team || 0)
-                    finalDict.package = finalDict.package + parseInt(package)
-
-                    // Getting the income detail
-                    await Incomes.findOne({ userID: users[i].userID }).then(val => {
-                        Object.keys(finalDict).forEach(async key => {
-                            if (val[key] !== undefined)
-                                finalDict[key] = (parseFloat(finalDict[key]) + parseFloat(val[key])).toFixed(2)
-                        })
-                    });
-
-                }
-            }
-            res.send({ msg: true, response: finalDict })
-        })
-    } catch (e) {
-        console.log(e);
-        res.send({ msg: false })
-    }
+    await homeIncome(req, res)
 })
 
 app.get("/directUsers", async (req, res) => {
@@ -208,23 +252,11 @@ async function checkSessionID(req, res) {
 }
 
 app.post("/login", async (req, res) => {
-    try {
-        const check = await Users.findOne({ userID: req.body.userID })
-        if (check.password === req.body.password) {
-            const userSession = { userID: check.userID, is_admin: check.is_admin, sessionID: crypto.randomBytes(6).toString('hex') }
-            await Sessions.updateOne({ userID: req.body.userID }, { $set: userSession }, { upsert: true });
-            res.json({ msg: true, userSession: userSession })
-        } else
-            res.send({ msg: false, response: "Password doesn't matched !!!" })
-    } catch (e) {
-        console.log(e);
-        res.send({ msg: false, response: "Invalid User !!!" })
-    }
+    await login(req, res)
 })
 
-app.get('/logout', (req, res) => {
-    req.session.destroy();
-    res.send({ msg: true });
+app.get('/logout', async (req, res) => {
+    await logout(req, res)
 });
 
 setTimeout(async () => {

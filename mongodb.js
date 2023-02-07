@@ -58,6 +58,21 @@ const UserSchema = new mongoose.Schema({
         type: String,
         default: 1
     },
+    gender: {
+        type: String
+    },
+    city: {
+        type: String
+    },
+    state: {
+        type: String
+    },
+    usdtAdd: {
+        type: String
+    },
+    tronAdd: {
+        type: String
+    },
     plans: {
         type: [{
             date: { type: Number, default: Date.now },
@@ -159,7 +174,6 @@ const DirectSchema = new mongoose.Schema({
     }
 }, { strict: false })
 
-
 const sessionSchema = new mongoose.Schema({
     sessionID: {
         type: String,
@@ -168,6 +182,18 @@ const sessionSchema = new mongoose.Schema({
     userID: {
         type: String,
         required: true
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    ipAdd: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        default: Date.now
     },
     is_admin: {
         type: Boolean,
@@ -205,7 +231,7 @@ module.exports = {
     LastuID,
     db,
     Incomes,
-    
+
     Trades,
     DailyprofitLogs,
     DirectincomeLogs,
