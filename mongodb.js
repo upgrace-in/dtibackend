@@ -174,6 +174,44 @@ const DirectSchema = new mongoose.Schema({
     }
 }, { strict: false })
 
+const DepositSchema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        default: Date.now
+    }
+}, { strict: false })
+
+const WithdrawSchema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        default: Date.now
+    }
+}, { strict: false })
+
+// Fund transer & deduct logs will be in it
+const AdminFundSchema = new mongoose.Schema({
+    userID: {
+        type: String,
+        required: true
+    },
+    amount: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        default: Date.now
+    }
+}, { strict: false })
+
 const sessionSchema = new mongoose.Schema({
     sessionID: {
         type: String,
@@ -226,6 +264,11 @@ const DirectincomeLogs = new mongoose.model("DirectincomeLogs", DirectSchema)
 const DailyLevelLogs = new mongoose.model("DailyLevelLogs", DailyLevelSchema)
 const LevelLogs = new mongoose.model("LevelLogs", LevelSchema)
 
+const DepositLogs = new mongoose.model("DepositLogs", DepositSchema)
+const WithdrawLogs = new mongoose.model("WithdrawLogs", WithdrawSchema)
+
+const AdminFundLogs = new mongoose.model("AdminFundLogs", AdminFundSchema)
+
 module.exports = {
     Users,
     LastuID,
@@ -237,6 +280,10 @@ module.exports = {
     DirectincomeLogs,
     DailyLevelLogs,
     LevelLogs,
+    DepositLogs,
+    WithdrawLogs,
+
+    AdminFundLogs,
 
     Sessions
 }

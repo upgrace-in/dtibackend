@@ -1,4 +1,4 @@
-const { Incomes } = require('../../mongodb');
+const { Incomes, AdminFundLogs } = require('../../mongodb');
 
 async function manageFund(req, res) {
     try {
@@ -39,12 +39,26 @@ async function manageFund(req, res) {
                 }
         }
 
+        // Add Logs
+        await AdminFundLogs.insertMany(
+            {
+                userID: req.body.userID,
+                amount: req.body.amount,
+                remark: req.body.remark,
+                type: req.body.type
+            }
+        ).then(async (val, err) => {
+            if (err)
+                throw "Unable to create Logs"
+        });
+
         await Incomes.updateOne(
             { userID: check.userID },
             finaldic,
             { upsert: true });
 
         res.json({ msg: true })
+
     } catch (e) {
         console.log(e);
         res.send({ msg: false, response: "Unknown error occured !!!" })

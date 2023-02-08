@@ -128,7 +128,6 @@ app.post('/updateProfile', async (req, res) => {
     try {
         await checkSessionID(req, res).then(async val => {
             const data = req.body
-            console.log(data);
             await Users.updateOne(
                 { userID: data.userSession.userID },
                 {
@@ -148,8 +147,41 @@ app.post('/updateProfile', async (req, res) => {
                         res.send({ msg: true })
                     else
                         throw "Unable to Update Profile !!!"
+                }).catch((error) => {
+                    throw "Unable to Update Profile !!!"
+                });
+        }).catch((error) => {
+            throw "Unable to Get User !!!"
+        });
+    } catch (e) {
+        console.log(e);
+        res.send({ msg: false, response: e })
+    }
+})
+
+app.post('/updatePassword', async (req, res) => {
+    try {
+        // fetch the user
+        const val = await fetchuserdetails(req.body.userID)
+
+        // match the password
+        if (val.password === req.body.oldpassword)
+            // change passwrod
+            await Users.updateOne(
+                { userID: req.body.userID },
+                {
+                    $set:
+                    {
+                        password: req.body.newpassword
+                    }
+                }).then((val, err) => {
+                    if (val)
+                        res.send({ msg: true })
+                    else
+                        throw "Unable to Update Password !!!"
                 })
-        })
+        else
+            throw "Invalid Old Password !!!"
     } catch (e) {
         console.log(e);
         res.send({ msg: false, response: e })

@@ -3,7 +3,8 @@ const {
     DailyprofitLogs,
     DirectincomeLogs,
     DailyLevelLogs,
-    LevelLogs
+    LevelLogs,
+    AdminFundLogs
 } = require('../mongodb')
 
 async function generateReports(req, res, filter) {
@@ -24,6 +25,12 @@ async function generateReports(req, res, filter) {
                 break;
             case 'dailylevelincome':
                 response = await DailyLevelLogs.find(filter)
+                break;
+            case 'fundTransfer':
+                response = await AdminFundLogs.find({ type: 'transferFund' })
+                break;
+            case 'fundDeduct':
+                response = await AdminFundLogs.find({ type: 'deductFund' })
                 break;
         }
         res.send({ msg: true, response: response })
