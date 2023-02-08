@@ -2,11 +2,19 @@ const express = require('express')
 const app = express()
 const { Users, db, Incomes, Sessions } = require('./mongodb')
 const cors = require('cors')
+
 app.set('trust proxy', true)
 
 require('dotenv').config()
 app.use(express.json())
 app.use(cors())
+
+var bodyParser = require('body-parser');
+// var multer = require('multer');
+// var forms = multer({ dest: 'upload/'});
+app.use(bodyParser.json());
+// app.use(forms.array());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const { dailyProfit } = require('./src/user/dailyProfit')
 const { dailyLevelIncome } = require('./src/user/dailyLevelIncome')
@@ -19,6 +27,8 @@ const { login, logout } = require('./src/user')
 // Admin
 const { manageFund } = require('./src/admin/manageFund')
 const { homeIncome } = require('./src/user/homeIncome')
+
+const { saveMail, fetchMail } = require('./src/mail')
 
 app.get('/isAuth', async (req, res) => {
     // return res.json({ msg: false })
@@ -44,6 +54,24 @@ app.get('/loginDetails', async (req, res) => {
     }
 });
 
+app.post('/saveMail', async (req, res) => {
+    await checkSessionID(req, res, req.body.userSession.sessionID).then(async val => {
+        await saveMail(req, res).catch(e => {
+            console.log(e);
+            res.send({ msg: false, response: e })
+        })
+    })
+});
+
+app.get('/fetchMail', async (req, res) => {
+    await checkSessionID(req, res, req.query.sessionID).then(async val => {
+        await fetchMail(req, res).catch(e => {
+            console.log(e);
+            res.send({ msg: false, response: e })
+        })
+    })
+});
+
 app.get('/plans', async (req, res) => {
     var collection = db.collection('plans');
     collection.find().toArray(function (err, plans) {
@@ -56,7 +84,7 @@ app.get('/plans', async (req, res) => {
 
 app.post("/allUsers", async (req, res) => {
     try {
-        await checkSessionID(req, res).then(async val => {
+        await checkSessionID(req, res, req.body.userSession.sessionID).then(async val => {
             let usersArr = []
 
             await Users.find({}).then(async users => {
@@ -126,7 +154,7 @@ app.get('/profileData', async (req, res) => {
 
 app.post('/updateProfile', async (req, res) => {
     try {
-        await checkSessionID(req, res).then(async val => {
+        await checkSessionID(req, res, req.body.userSession.sessionID).then(async val => {
             const data = req.body
             await Users.updateOne(
                 { userID: data.userSession.userID },
@@ -221,13 +249,13 @@ app.get("/myTeam", async (req, res) => {
 });
 
 app.post("/addPlan", async (req, res) => {
-    await checkSessionID(req, res).then(async val => {
+    await checkSessionID(req, res, req.body.userSession.sessionID).then(async val => {
         await addPlan(req, res)
     })
 })
 
 app.post("/fundManagment", async (req, res) => {
-    await checkSessionID(req, res).then(async val => {
+    await checkSessionID(req, res, req.body.userSession.sessionID).then(async val => {
         await manageFund(req, res)
     })
 })
@@ -270,9 +298,9 @@ app.get("/directUsers", async (req, res) => {
     }
 });
 
-async function checkSessionID(req, res) {
+async function checkSessionID(req, res, sessionID) {
     try {
-        const collection = await Sessions.findOne({ sessionID: req.body.userSession.sessionID });
+        const collection = await Sessions.findOne({ sessionID: sessionID });
         if (collection === null)
             res.send({ msg: false })
         else

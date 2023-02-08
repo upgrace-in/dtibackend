@@ -118,7 +118,6 @@ const IncomeSchema = new mongoose.Schema({
     }
 })
 
-
 const TradeSchema = new mongoose.Schema({
     userID: {
         type: String,
@@ -252,6 +251,31 @@ const uIDSchema = new mongoose.Schema({
     }
 });
 
+const mailSchema = new mongoose.Schema({
+    to: {
+        type: String,
+        required: true
+    },
+    subject: {
+        type: String,
+        required: true
+    },
+    msg: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Number,
+        required: true,
+        default: Date.now
+    },
+    attachments: {
+        type: [{
+            attachID: { type: String }
+        }]
+    }
+})
+
 const Sessions = new mongoose.model("Sessions", sessionSchema)
 const Users = new mongoose.model("Users", UserSchema)
 const Incomes = new mongoose.model("Income", IncomeSchema)
@@ -268,6 +292,8 @@ const DepositLogs = new mongoose.model("DepositLogs", DepositSchema)
 const WithdrawLogs = new mongoose.model("WithdrawLogs", WithdrawSchema)
 
 const AdminFundLogs = new mongoose.model("AdminFundLogs", AdminFundSchema)
+const Mails = new mongoose.model("Mails", mailSchema)
+
 
 module.exports = {
     Users,
@@ -284,6 +310,8 @@ module.exports = {
     WithdrawLogs,
 
     AdminFundLogs,
+
+    Mails,
 
     Sessions
 }
