@@ -252,6 +252,10 @@ const uIDSchema = new mongoose.Schema({
 });
 
 const mailSchema = new mongoose.Schema({
+    from: {
+        type: String,
+        required: true
+    },
     to: {
         type: String,
         required: true
