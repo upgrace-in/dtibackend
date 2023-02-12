@@ -9,7 +9,7 @@ async function login(req, res) {
     try {
         const check = await Users.findOne({ userID: req.body.userID })
         if (check.password === req.body.password) {
-            const userSession = { userID: check.userID, name: check.name, ipAdd: parseIp(req), is_admin: check.is_admin, sessionID: crypto.randomBytes(6).toString('hex') }
+            const userSession = { userID: check.userID, email: check.email, name: check.name, ipAdd: parseIp(req), is_admin: check.is_admin, sessionID: crypto.randomBytes(6).toString('hex') }
             await Sessions.updateOne({ userID: req.body.userID }, { $set: userSession }, { upsert: true });
             res.json({ msg: true, userSession: userSession })
         } else

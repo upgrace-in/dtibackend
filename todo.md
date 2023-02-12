@@ -7,4 +7,6 @@ qaz2Wsxedc
 # Extras:
 # Convert whole app to nextjs
 1. Improve Overall Security
-2. Improve Overall Design (https://zenix.dexignzone.com/xhtml/index-2.html)
+
+# Design:
+1. Search dashboard urls
