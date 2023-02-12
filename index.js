@@ -28,7 +28,7 @@ const { login, logout } = require('./src/user')
 const { manageFund } = require('./src/admin/manageFund')
 const { homeIncome } = require('./src/user/homeIncome')
 
-const { saveMail, fetchMail } = require('./src/mail')
+const { saveMail, fetchMail, deleteMails } = require('./src/mail')
 
 app.get('/isAuth', async (req, res) => {
     // return res.json({ msg: false })
@@ -66,6 +66,15 @@ app.post('/saveMail', async (req, res) => {
 app.get('/fetchMail', async (req, res) => {
     await checkSessionID(req, res, req.query.sessionID).then(async val => {
         await fetchMail(req, res).catch(e => {
+            console.log(e);
+            res.send({ msg: false, response: e })
+        })
+    })
+});
+
+app.post('/deleteMails', async (req, res) => {
+    await checkSessionID(req, res, req.body.userSession.sessionID).then(async val => {
+        await deleteMails(req, res).catch(e => {
             console.log(e);
             res.send({ msg: false, response: e })
         })

@@ -1,5 +1,6 @@
 const { Mails } = require('../mongodb')
 const fs = require("fs");
+const ObjectID = require('mongodb').ObjectId;
 
 async function fetchMail(req, res) {
     const inbox = await Mails.find({ to: req.query.userID })
@@ -8,8 +9,6 @@ async function fetchMail(req, res) {
 }
 
 async function saveMail(req, res) {
-
-    console.log(req.body);
 
     const document = {
         from: req.body.userSession.userID,
@@ -25,4 +24,17 @@ async function saveMail(req, res) {
     });
 }
 
-module.exports = { saveMail, fetchMail }
+
+async function deleteMails(req, res) {
+    // contains all the mails need to be deleted
+    const data = req.body.data
+    data.forEach(async element => {
+        await Mails.deleteOne({ "_id": ObjectID(element) }).catch((err) => {
+            console.log(err);
+        })
+    });
+    res.send({ msg: true })
+}
+
+
+module.exports = { saveMail, fetchMail, deleteMails }
